@@ -4,12 +4,14 @@
 #echo "username:"$username
 #echo "password:"$password
 
-et -e
+# et -e
 logger "Arrancando instalacion y configuracion de MongoDB"
 USO="Uso : install.sh [opciones]
 Ejemplo:
+install.sh -f /ruta/config.ini 
 install.sh -u administrador -p password [-n 27017]
 Opciones:
+-f /ruta/config.ini
 -u usuario
 -p password
 -n numero de puerto (opcional)
@@ -27,23 +29,33 @@ function ayuda() {
 while getopts ":f:u:p:n:a" OPCION
 do
 case ${OPCION} in
-f )
+f)
 source $OPTARG
+
+if [ -z $username ]
+then
+ayuda "El usuario debe ser especificado en config.ini (username=\"usuario\")"; exit 1
+fi
+if [ -z $password ]
+then
+ayuda "La password debe ser especificada en config.ini (password=\"contraseña\")"; exit 1
+fi
+
 USUARIO=$username
 PASSWORD=$password
 PUERTO=$port
-break;
-u )
+break;;
+u)
 USUARIO=$OPTARG
 echo "Parametro USUARIO establecido con '${USUARIO}'";;
-p )
+p)
 PASSWORD=$OPTARG
 echo "Parametro PASSWORD establecido";;
-n )
+n)
 PUERTO_MONGOD=$OPTARG
 echo "Parametro PUERTO_MONGOD establecido con '${PUERTO_MONGOD}'";;
-a ) ayuda; exit 0;;
-: ) ayuda "Falta el parametro para -$OPTARG"; exit 1;; \?) ayuda "La
+a) ayuda; exit 0;;
+:) ayuda "Falta el parametro para -$OPTARG"; exit 1;; \?) ayuda "La
 opcion no existe : $OPTARG"; exit 1;;
 esac
 done
@@ -113,8 +125,22 @@ MONGOD_CONF
 ) > /etc/mongod.conf
 # Reiniciar el servicio de mongod para aplicar la nueva configuracion
 systemctl restart mongod
-logger "Esperando a que mongod responda..."
-sleep 15
+# logger "Esperando a que mongod responda..."
+# SUBSTATE= "$(systemctl show -p SubState mongod | sed 's/SubState=//g')"
+# STATE= "$(systemctl show -p SubState mongod | sed 's/State=//g')"
+
+# echo " El estado ${STATE} Y sub stado ${SUBSTATE}"
+# # echo "Esta ejecutando ${STATUS}"
+# # MONGO_VERSION=$(mongo --eval "printjson(db.serverStatus())" | grep "Error")
+# systemctl show -p ActiveState mongod | sed 's/ActiveState=//g'
+# sleep 15
+if [ "$(systemctl show -p ActiveState mongod | sed 's/ActiveState=//g')" != "active" ] && [ "$(systemctl show -p SubState mongod | sed 's/SubState=//g')"  != "running" ]
+then
+        # echo "$SERVICE is inactive" | mailx -r admin@server.com -s "$SERVICE not running on $HOSTNAME"  my_account@server.com
+        echo "Algo esta mal con la instalacion de mongo..."; exit 1
+else
+        echo "Mongo esta corriendo sin novedades...";
+fi
 # Crear usuario con la password proporcionada como parametro
 mongo admin << CREACION_DE_USUARIO
 db.createUser({
@@ -129,4 +155,7 @@ db: "admin"
 }] })
 CREACION_DE_USUARIO
 logger "El usuario ${USUARIO} ha sido creado con exito!"
+
+
+
 exit 0
