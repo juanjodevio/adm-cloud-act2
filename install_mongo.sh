@@ -29,6 +29,7 @@ function ayuda() {
 while getopts ":f:u:p:n:a" OPCION
 do
 case ${OPCION} in
+# agregamos esta opcion en el case para que pueda leer archivos pasados por parametros con el argumento -f
 f)
 source $OPTARG
 
@@ -125,22 +126,18 @@ MONGOD_CONF
 ) > /etc/mongod.conf
 # Reiniciar el servicio de mongod para aplicar la nueva configuracion
 systemctl restart mongod
-# logger "Esperando a que mongod responda..."
-# SUBSTATE= "$(systemctl show -p SubState mongod | sed 's/SubState=//g')"
-# STATE= "$(systemctl show -p SubState mongod | sed 's/State=//g')"
+logger "Esperando a que mongod responda..."
 
-# echo " El estado ${STATE} Y sub stado ${SUBSTATE}"
-# # echo "Esta ejecutando ${STATUS}"
-# # MONGO_VERSION=$(mongo --eval "printjson(db.serverStatus())" | grep "Error")
-# systemctl show -p ActiveState mongod | sed 's/ActiveState=//g'
-# sleep 15
+# Se implementa validacion para verificar que mongodb este ejecutandose
 if [ "$(systemctl show -p ActiveState mongod | sed 's/ActiveState=//g')" != "active" ] && [ "$(systemctl show -p SubState mongod | sed 's/SubState=//g')"  != "running" ]
 then
         # echo "$SERVICE is inactive" | mailx -r admin@server.com -s "$SERVICE not running on $HOSTNAME"  my_account@server.com
         echo "Algo esta mal con la instalacion de mongo..."; exit 1
 else
-        echo "Mongo esta corriendo sin novedades...";
+        echo "---> Mongo esta corriendo sin novedades...";
 fi
+sleep 15
+
 # Crear usuario con la password proporcionada como parametro
 mongo admin << CREACION_DE_USUARIO
 db.createUser({
@@ -154,6 +151,8 @@ role: "restore",
 db: "admin"
 }] })
 CREACION_DE_USUARIO
+
+
 logger "El usuario ${USUARIO} ha sido creado con exito!"
 
 
